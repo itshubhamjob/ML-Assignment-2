@@ -31,7 +31,13 @@ class CustomGaussianNB:
     def _pdf(self, class_idx, x):
         mean = self._mean[class_idx]
         var = self._var[class_idx]
-        numerator = np.exp(-((x - mean)**2) / (2 * var))
+
+        eps = 1e-9
+        var = var + eps
+
+        #numerator = np.exp(-((x - mean)**2) / (2 * var))
+        exponent = -((x.astype(float) - mean)**2) / (2 * var)
+        numerator = np.exp(exponent)
         denominator = np.sqrt(2 * np.pi * var)
         return numerator / denominator
 
