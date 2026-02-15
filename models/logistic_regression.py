@@ -1,47 +1,46 @@
 import numpy as np
 
 class CustomLogisticRegression:
-    def __init__ (self, lr=0.01, iterations=1000):
-        self.lr = lr
-        self.iterations = iterations
-        self.weights = None
-        self.bias = None
+    def __init__(self, learning_rate_param=0.01, max_iterations=1000):
+        self.learning_rate_param = learning_rate_param
+        self.max_iterations = max_iterations
+        self.coefficient_weights = None
+        self.intercept_bias = None
 
-    def sigmoid(self, z):
-        z = np.clip(z, -500, 500)
-        z = np.array(z, dtype=float)
-        return 1 / (1 + np.exp(-z))
+    def sigmoid_activation(self, linear_combination):
+        linear_combination = np.clip(linear_combination, -500, 500)
+        linear_combination = np.array(linear_combination, dtype=float)
+        return 1 / (1 + np.exp(-linear_combination))
 
-
-    def fit(self, X, y):
+    def fit(self, feature_matrix, target_vector):
         # 1. Force conversion to NumPy float64 arrays to avoid 'O' (Object) dtypes
-        X = np.array(X, dtype=np.float64)
-        y = np.array(y, dtype=np.float64).reshape(-1, 1) # Ensure y is a column vector
+        feature_matrix = np.array(feature_matrix, dtype=np.float64)
+        target_vector = np.array(target_vector, dtype=np.float64).reshape(-1, 1) # Ensure y is a column vector
 
-        n_samples, n_features = X.shape
+        sample_count, feature_count = feature_matrix.shape
 
         # 2. Initialize weights explicitly as float64
-        self.weights = np.zeros((n_features, 1), dtype=np.float64)
-        self.bias = 0.0
+        self.coefficient_weights = np.zeros((feature_count, 1), dtype=np.float64)
+        self.intercept_bias = 0.0
 
-        for _ in range(self.iterations):
-            model = np.dot(X, self.weights) + self.bias
-            y_predicted = self.sigmoid(model)
+        for iteration_step in range(self.max_iterations):
+            linear_model_output = np.dot(feature_matrix, self.coefficient_weights) + self.intercept_bias
+            predicted_probability = self.sigmoid_activation(linear_model_output)
 
-            dw = (1 / n_samples) * np.dot(X.T, (y_predicted - y))
-            db = (1 / n_samples) * np.sum(y_predicted - y)
+            weight_gradient = (1 / sample_count) * np.dot(feature_matrix.T, (predicted_probability - target_vector))
+            bias_gradient = (1 / sample_count) * np.sum(predicted_probability - target_vector)
 
-            self.weights -= self.lr * dw
-            self.bias -= self.lr * db
+            self.coefficient_weights -= self.learning_rate_param * weight_gradient
+            self.intercept_bias -= self.learning_rate_param * bias_gradient
 
-    def predict_proba(self, X):
-        model = np.dot(X, self.weights) + self.bias
-        return self.sigmoid(model)
+    def predict_probability(self, feature_matrix):
+        linear_model_output = np.dot(feature_matrix, self.coefficient_weights) + self.intercept_bias
+        return self.sigmoid_activation(linear_model_output)
 
-    def predict(self, X):
-        return [1 if i > 0.5 else 0 for i in self.predict_proba(X)]
+    def predict_class(self, feature_matrix):
+        return [1 if probability_score > 0.5 else 0 for probability_score in self.predict_probability(feature_matrix)]
 
-def run_logistic_regression(X, y):
-    model = CustomLogisticRegression()
-    model.fit(X.values, y.values)
-    return model.predict(X.values), model.predict_proba(X.values)
+def run_logistic_regression(feature_matrix, target_vector):
+    model_instance = CustomLogisticRegression()
+    model_instance.fit(feature_matrix.values, target_vector.values)
+    return model_instance.predict_class(feature_matrix.values), model_instance.predict_probability(feature_matrix.values)

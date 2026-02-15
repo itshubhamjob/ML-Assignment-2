@@ -1,48 +1,47 @@
 import numpy as np
 
 class CustomGaussianNB:
-    def fit(self, X, y):
-        n_samples, n_features = X.shape
-        self._classes = np.unique(y)
-        n_classes = len(self._classes)
+    def fit(self, feature_matrix, target_vector):
+        sample_count, feature_count = feature_matrix.shape
+        self.class_labels = np.unique(target_vector)
+        class_count = len(self.class_labels)
 
-        self._mean = np.zeros((n_classes, n_features))
-        self._var = np.zeros((n_classes, n_features))
-        self._priors = np.zeros(n_classes)
+        self.feature_means = np.zeros((class_count, feature_count))
+        self.feature_variances = np.zeros((class_count, feature_count))
+        self.class_priors = np.zeros(class_count)
 
-        for idx, c in enumerate(self._classes):
-            X_c = X[y == c]
-            self._mean[idx, :] = X_c.mean(axis=0)
-            self._var[idx, :] = X_c.var(axis=0)
-            self._priors[idx] = X_c.shape[0] / float(n_samples)
+        for label_idx, class_label in enumerate(self.class_labels):
+            features_for_class = feature_matrix[target_vector == class_label]
+            self.feature_means[label_idx, :] = features_for_class.mean(axis=0)
+            self.feature_variances[label_idx, :] = features_for_class.var(axis=0)
+            self.class_priors[label_idx] = features_for_class.shape[0] / float(sample_count)
 
-    def predict(self, X):
-        return np.array([self._predict(x) for x in X])
+    def predict(self, feature_matrix):
+        return np.array([self._predict_single_sample(sample_vector) for sample_vector in feature_matrix])
 
-    def _predict(self, x):
-        posteriors = []
-        for idx, c in enumerate(self._classes):
-            prior = np.log(self._priors[idx])
-            class_conditional = np.sum(np.log(self._pdf(idx, x)))
-            posterior = prior + class_conditional
-            posteriors.append(posterior)
-        return self._classes[np.argmax(posteriors)]
+    def _predict_single_sample(self, feature_vector):
+        posterior_probabilities = []
+        for label_idx, class_label in enumerate(self.class_labels):
+            prior_prob = np.log(self.class_priors[label_idx])
+            conditional_likelihood = np.sum(np.log(self._gaussian_pdf(label_idx, feature_vector)))
+            posterior_prob = prior_prob + conditional_likelihood
+            posterior_probabilities.append(posterior_prob)
+        return self.class_labels[np.argmax(posterior_probabilities)]
 
-    def _pdf(self, class_idx, x):
-        mean = self._mean[class_idx]
-        var = self._var[class_idx]
+    def _gaussian_pdf(self, class_idx, feature_vector):
+        feature_mean = self.feature_means[class_idx]
+        feature_var = self.feature_variances[class_idx]
 
-        eps = 1e-9
-        var = var + eps
+        epsilon_smoothing = 1e-9
+        feature_var = feature_var + epsilon_smoothing
 
-        #numerator = np.exp(-((x - mean)**2) / (2 * var))
-        exponent = -((x.astype(float) - mean)**2) / (2 * var)
-        numerator = np.exp(exponent)
-        denominator = np.sqrt(2 * np.pi * var)
-        return numerator / denominator
+        exponent_term = -((feature_vector.astype(float) - feature_mean)**2) / (2 * feature_var)
+        numerator_term = np.exp(exponent_term)
+        denominator_term = np.sqrt(2 * np.pi * feature_var)
+        return numerator_term / denominator_term
 
-def run_naive_bayes(X, y):
-    model = CustomGaussianNB()
-    model.fit(X.values, y.values)
-    preds = model.predict(X.values)
-    return preds, preds
+def run_naive_bayes(feature_matrix, target_vector):
+    model_instance = CustomGaussianNB()
+    model_instance.fit(feature_matrix.values, target_vector.values)
+    class_predictions = model_instance.predict(feature_matrix.values)
+    return class_predictions, class_predictions

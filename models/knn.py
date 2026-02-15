@@ -2,26 +2,26 @@ import numpy as np
 from collections import Counter
 
 class CustomKNN:
-    def __init__(self, k=3):
-        self.k = k
+    def __init__(self, neighbor_count=3):
+        self.neighbor_count = neighbor_count
 
-    def fit(self, X, y):
-        self.X_train = X
-        self.y_train = y
+    def fit(self, training_features, training_labels):
+        self.training_feature_matrix = training_features
+        self.training_label_vector = training_labels
 
-    def predict(self, X):
-        predictions = [self._predict(x) for x in X]
-        return np.array(predictions)
+    def predict(self, test_features):
+        class_predictions = [self._predict_single_sample(sample_vector) for sample_vector in test_features]
+        return np.array(class_predictions)
 
-    def _predict(self, x):
-        distances = [np.sqrt(np.sum((x - x_train)**2)) for x_train in self.X_train]
-        k_indices = np.argsort(distances)[:self.k]
-        k_nearest_labels = [self.y_train[i] for i in k_indices]
-        most_common = Counter(k_nearest_labels).most_common(1)
-        return most_common[0][0]
+    def _predict_single_sample(self, query_sample):
+        distance_list = [np.sqrt(np.sum((query_sample - train_sample)**2)) for train_sample in self.training_feature_matrix]
+        nearest_indices = np.argsort(distance_list)[:self.neighbor_count]
+        nearest_neighbor_labels = [self.training_label_vector[neighbor_idx] for neighbor_idx in nearest_indices]
+        most_frequent = Counter(nearest_neighbor_labels).most_common(1)
+        return most_frequent[0][0]
 
-def run_knn(X, y):
-    model = CustomKNN(k=5)
-    model.fit(X.values, y.values)
-    preds = model.predict(X.values)
-    return preds, preds
+def run_knn(feature_matrix, target_vector):
+    model_instance = CustomKNN(neighbor_count=5)
+    model_instance.fit(feature_matrix.values, target_vector.values)
+    class_predictions = model_instance.predict(feature_matrix.values)
+    return class_predictions, class_predictions

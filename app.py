@@ -23,39 +23,39 @@ st.markdown("This application uses machine learning models built from scratch wi
 
 # Sidebar Configuration
 st.sidebar.header("Upload & Model Settings")
-uploaded_file = st.sidebar.file_uploader("Upload Test CSV (with 'Churn' column)", type="csv")
-model_choice = st.sidebar.selectbox("Select ML Model", 
+csv_input_file = st.sidebar.file_uploader("Upload Test CSV (with 'Churn' column)", type="csv")
+selected_classifier = st.sidebar.selectbox("Select ML Model", 
     ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "Random Forest", "XGBoost"])
 
 # Helper function to process data
-def preprocess_data(df):
+def preprocess_data(dataset_df):
     # Drop ID and handle the target
-    if 'customerID' in df.columns:
-        df = df.drop(columns=['customerID'])
+    if 'customerID' in dataset_df.columns:
+        dataset_df = dataset_df.drop(columns=['customerID'])
     
     # Map Churn to binary
-    if 'Churn' in df.columns:
-        df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+    if 'Churn' in dataset_df.columns:
+        dataset_df['Churn'] = dataset_df['Churn'].map({'Yes': 1, 'No': 0})
     
     # Simple encoding for categorical variables
-    df = pd.get_dummies(df)
+    dataset_df = pd.get_dummies(dataset_df)
     
     # Fill missing values if any
-    df = df.fillna(0)
-    return df
+    dataset_df = dataset_df.fillna(0)
+    return dataset_df
 
-if uploaded_file:
-    data = pd.read_csv(uploaded_file)
-    st.write("### Data Preview", data.head(5))
+if csv_input_file:
+    input_data = pd.read_csv(csv_input_file)
+    st.write("### Data Preview", input_data.head(5))
     
-    processed_df = preprocess_data(data)
+    processed_input = preprocess_data(input_data)
     
-    if 'Churn' in processed_df.columns:
-        X = processed_df.drop(columns=['Churn'])
-        y = processed_df['Churn']
+    if 'Churn' in processed_input.columns:
+        feature_matrix = processed_input.drop(columns=['Churn'])
+        target_labels = processed_input['Churn']
         
         # Mapping model selection to the imported scratch functions
-        model_functions = {
+        classifier_functions = {
             "Logistic Regression": run_logistic_regression,
             "Decision Tree": run_decision_tree,
             "KNN": run_knn,
@@ -64,45 +64,45 @@ if uploaded_file:
             "XGBoost": run_xgboost
         }
         
-        with st.spinner(f"Training and evaluating {model_choice}..."):
+        with st.spinner(f"Training and evaluating {selected_classifier}..."):
             # Execute the custom model
-            # These return (y_pred, y_prob) or (y_pred, y_pred)
-            y_pred, y_prob = model_functions[model_choice](X, y)
+            # These return (output_predictions, output_probabilities) or (output_predictions, output_predictions)
+            output_predictions, output_probabilities = classifier_functions[selected_classifier](feature_matrix, target_labels)
         
         # Calculation of Metrics
-        metrics = {
-            "Accuracy": accuracy_score(y, y_pred),
-            "AUC Score": roc_auc_score(y, y_prob),
-            "Precision": precision_score(y, y_pred, zero_division=0),
-            "Recall": recall_score(y, y_pred, zero_division=0),
-            "F1 Score": f1_score(y, y_pred, zero_division=0),
-            "MCC Score": matthews_corrcoef(y, y) if len(np.unique(y)) > 1 else 0
+        performance_metrics = {
+            "Accuracy": accuracy_score(target_labels, output_predictions),
+            "AUC Score": roc_auc_score(target_labels, output_probabilities),
+            "Precision": precision_score(target_labels, output_predictions, zero_division=0),
+            "Recall": recall_score(target_labels, output_predictions, zero_division=0),
+            "F1 Score": f1_score(target_labels, output_predictions, zero_division=0),
+            "MCC Score": matthews_corrcoef(target_labels, target_labels) if len(np.unique(target_labels)) > 1 else 0
         }
 
         # Dashboard Layout
         st.divider()
-        st.subheader(f"Evaluation Metrics: {model_choice}")
+        st.subheader(f"Evaluation Metrics: {selected_classifier}")
         
-        m_cols = st.columns(6)
-        for i, (label, value) in enumerate(metrics.items()):
-            m_cols[i].metric(label, f"{value:.4f}")
+        metric_columns = st.columns(6)
+        for idx, (metric_label, metric_value) in enumerate(performance_metrics.items()):
+            metric_columns[idx].metric(metric_label, f"{metric_value:.4f}")
 
         # Confusion Matrix and Report
         col1, col2 = st.columns([1, 1])
         
         with col1:
             st.write("#### Confusion Matrix")
-            cm = confusion_matrix(y, y_pred)
+            confusion_mat = confusion_matrix(target_labels, output_predictions)
             fig, ax = plt.subplots(figsize=(5, 4))
-            sns.heatmap(cm, annot=True, fmt='d', cmap='YlGnBu', ax=ax)
+            sns.heatmap(confusion_mat, annot=True, fmt='d', cmap='YlGnBu', ax=ax)
             plt.xlabel('Predicted Labels')
             plt.ylabel('True Labels')
             st.pyplot(fig)
             
         with col2:
             st.write("#### Prediction Distribution")
-            dist_df = pd.DataFrame({'Actual': y, 'Predicted': y_pred})
-            st.bar_chart(dist_df.apply(pd.Series.value_counts))
+            distribution_df = pd.DataFrame({'Actual': target_labels, 'Predicted': output_predictions})
+            st.bar_chart(distribution_df.apply(pd.Series.value_counts))
             
     else:
         st.error("Error: The dataset must contain a 'Churn' column for evaluation.")
